@@ -509,6 +509,7 @@ module.exports = {
 };
 
 function writeFiles() {
+  this.writeDestination('.npmrc', 'legacy-peer-deps=true');
   return this.writeFiles({
     sections: files,
     rootTemplatesPath: 'angular',
