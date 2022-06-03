@@ -32,12 +32,12 @@ const hasValidationRule = fields.some(field =>
                 field.fieldValidationPattern
         )
 );
-const hasRequiredRelationship = relationships.some(relationship => relationship.relationshipRequired);
+const hasRequiredRelationship = relationships.some(relationship => relationship.ownerSide);
 const isValidatorsRequired = hasValidationRule || hasRequiredRelationship;
 _%>
 import { Component, OnInit<% if (fieldsContainImageBlob) { %>, ElementRef<% } %> } from '@angular/core';
 import { HttpResponse } from '@angular/common/http';
-import { FormBuilder,<%_ if (isValidatorsRequired) { _%> Validators<%_ } _%> } from '@angular/forms';
+import { FormGroup, FormControl, <%_ if (relationships.find(({ownerSide, collection}) => ownerSide && collection)) { _%>FormArray,<%_ } _%><%_ if (isValidatorsRequired) { _%> Validators<%_ } _%> } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
 import { finalize<% if (relationships.some(rel => rel.ownerSide === true)) { %>, map<% } %> } from 'rxjs/operators';
@@ -100,28 +100,7 @@ export class <%= entityAngularName %>UpdateComponent implements OnInit {
     <%_ } _%>
 <%_ } _%>
 
-    editForm = this.fb.group<I<%= entityAngularName %>>({
-    <%_ for (const field of fields) {
-        const fieldName = field.fieldName;
-    _%>
-        <%= fieldName %>: [null as <%= field.tsType %> | null<% if (field.fieldValidate === true) { %>, [<% if (field.fieldValidationRequired) { %>Validators.required,<% } %><% if (field.fieldValidationMinLength) { %>Validators.minLength(<%= field.fieldValidateRulesMinlength %>),<% } %><% if (field.fieldValidationMaxLength) { %>Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),<% } %><% if (field.fieldValidationMin) { %>Validators.min(<%= field.fieldValidateRulesMin %>),<% } %><% if (field.fieldValidationMax) { %>Validators.max(<%= field.fieldValidateRulesMax %>),<% } %><% if (field.fieldValidationPattern) { %>Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),<% } %>]<% } %>],
-        <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
-        <%= fieldName %>ContentType: [null as <%= field.tsType %> | null],
-        <%_ } _%>
-    <%_ } _%>
-<%_ for (const relationship of relationships) {
-    const ownerSide = relationship.ownerSide;
-    const relationshipName = relationship.relationshipName;
-    const relationshipFieldNamePlural = relationship.relationshipFieldNamePlural;
-    const relationshipRequired = relationship.relationshipRequired;
-_%>
-    <%_ if (relationship.relationshipManyToOne || (relationship.relationshipOneToOne && ownerSide)) { _%>
-        <%= relationshipName %>: [null as I<%= relationship.otherEntity.entityAngularName %> | null<% if (relationshipRequired) { %>,Validators.required<% } %>],
-    <%_ } else if (relationship.relationshipManyToMany && ownerSide) { _%>
-        <%= relationshipFieldNamePlural %>: [null as I<%= relationship.otherEntity.entityAngularName %> | null<% if (relationshipRequired) { %>,Validators.required<% } %>],
-    <%_ } _%>
-<%_ } _%>
-    });
+    editForm = create<%= entityAngularName %>FormGroup();
 
     constructor(
         <%_ if (fieldsContainBlob) { _%>
@@ -145,7 +124,6 @@ _%>
         protected elementRef: ElementRef,
         <%_ } _%>
         protected activatedRoute: ActivatedRoute,
-        protected fb: FormBuilder,
     ) {}
 
     ngOnInit(): void {
@@ -372,3 +350,65 @@ _%>
         };
     }
 }
+
+export function create<%= entityAngularName %>FormGroup(<%= entityInstance %>?: I<%= entityAngularName %>): FormGroup {
+  return new FormGroup({
+<%_ for (field of fields) {
+  const { fieldName, fieldType, fieldTypeBlobContent } = field;
+_%>
+    <%= fieldName %>: new FormControl(
+  <%_ if (['Instant', 'ZonedDateTime'].includes(fieldType)) { _%>
+      <%= entityInstance %>?.<%= fieldName %> ? <%= entityInstance %>.<%= fieldName %>.format(DATE_TIME_FORMAT) : null
+  <%_ } else { _%>
+      <%= entityInstance %>?.<%= fieldName _%>
+  <%_ } _%>
+  <%_ if (field.fieldValidateRules && ['required', 'minlength', 'maxlength', 'min', 'max', 'pattern'].some(rule => field.fieldValidateRules.includes(rule))) { _%>
+      ,[
+    <%_ if (field.fieldValidateRules.includes('required')) { _%>
+        Validators.required,
+    <%_ } _%>
+    <%_ if (field.fieldValidateRules.includes('minlength')) { _%>
+        Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidateRules.includes('maxlength')) { _%>
+        Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidateRules.includes('min')) { _%>
+        Validators.min(<%= field.fieldValidateRulesMin %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidateRules.includes('max')) { _%>
+        Validators.max(<%= field.fieldValidateRulesMax %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidateRules.includes('pattern')) { _%>
+        Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
+    <%_ } %>
+      ]
+  <%_ } _%>
+    ),
+  <%_ if (['byte[]', 'ByteBuffer'].includes(fieldType) && fieldTypeBlobContent !== 'text') { _%>
+      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>?.<%= fieldName %>ContentType),
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+  const { relationshipRequired, propertyName, collection } = relationship;
+_%>
+  <%_ if (collection) { _%>
+    <%= relationship.propertyName %>: new FormArray(
+      (<%= entityInstance %>?.<%= propertyName %> ?? [{}]).map(<%= propertyName %> =>
+        new FormGroup({
+          <%= relationship.otherEntity.primaryKey.name %>: new FormControl(<%= propertyName %>.<%= relationship.otherEntity.primaryKey.name %>, [Validators.required]),
+          <%= relationship.otherEntityField %>: new FormControl(<%= propertyName %>.<%= relationship.otherEntityField %>),
+        }<% if (relationshipRequired) { %>, [Validators.required]<% } %>)
+      )
+    ),
+  <%_ } else { _%>
+    <%= relationship.propertyName %>: new FormGroup({
+      <%= relationship.otherEntity.primaryKey.name %>: new FormControl(<%= entityInstance %>?.<%= propertyName %>?.<%= relationship.otherEntity.primaryKey.name %>, [Validators.required]),
+    <%_ if (relationship.otherEntityField !== relationship.otherEntity.primaryKey.name) { _%>
+      <%= relationship.otherEntityField %>: new FormControl(<%= entityInstance %>?.<%= propertyName %>?.<%= relationship.otherEntityField %>),
+    <%_ } _%>
+    }<% if (relationshipRequired) { %>, [Validators.required]<% } %>),
+  <%_ } _%>
+<%_ } _%>
+  });
+};

@@ -120,7 +120,10 @@ describe('<%= entityAngularName %> Management Update Component', () => {
                 comp.ngOnInit();
 
                 expect(<%= otherEntity.entityInstance %>Service.query).toHaveBeenCalled();
-                expect(<%= otherEntity.entityInstance %>Service.add<%= otherEntity.entityAngularName %>ToCollectionIfMissing).toHaveBeenCalledWith(<%= otherEntity.entityInstance %>Collection, ...additional<%= otherEntity.entityAngularNamePlural %>);
+                expect(<%= otherEntity.entityInstance %>Service.add<%= otherEntity.entityAngularName %>ToCollectionIfMissing).toHaveBeenCalledWith(
+                  <%= otherEntity.entityInstance %>Collection,
+                  ...additional<%= otherEntity.entityAngularNamePlural %>.map(expect.objectContaining)
+                );
                 expect(comp.<%= otherEntity.entityInstancePlural %>SharedCollection).toEqual(expectedCollection);
         });
 
@@ -190,14 +193,14 @@ describe('<%= entityAngularName %> Management Update Component', () => {
 
             // THEN
             expect(comp.previousState).toHaveBeenCalled();
-            expect(<%= entityInstance %>Service.update).toHaveBeenCalledWith(<%= entityInstance %>);
+            expect(<%= entityInstance %>Service.update).toHaveBeenCalledWith(expect.objectContaining(<%= entityInstance %>));
             expect(comp.isSaving).toEqual(false);
         });
 
         it('Should call create service on save for new entity', () => {
             // GIVEN
             const saveSubject = new Subject<HttpResponse<<%= entityAngularName %>>>();
-            const <%= entityInstance %> = new <%= entityAngularName %>();
+            const <%= entityInstance %> = {} as <%= entityAngularName %>;
             jest.spyOn(<%= entityInstance %>Service, 'create').mockReturnValue(saveSubject);
             jest.spyOn(comp, 'previousState');
             activatedRoute.data = of({ <%= entityInstance %> });
@@ -210,7 +213,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             saveSubject.complete();
 
             // THEN
-            expect(<%= entityInstance %>Service.create).toHaveBeenCalledWith(<%= entityInstance %>);
+            expect(<%= entityInstance %>Service.create).toHaveBeenCalled();
             expect(comp.isSaving).toEqual(false);
             expect(comp.previousState).toHaveBeenCalled();
         });
@@ -230,7 +233,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             saveSubject.error('This is an error!');
 
             // THEN
-            expect(<%= entityInstance %>Service.update).toHaveBeenCalledWith(<%= entityInstance %>);
+            expect(<%= entityInstance %>Service.update).toHaveBeenCalledWith(expect.objectContaining(<%= entityInstance %>));
             expect(comp.isSaving).toEqual(false);
             expect(comp.previousState).not.toHaveBeenCalled();
         });
