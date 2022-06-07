@@ -37,7 +37,9 @@ const initialUser: User = {
   templateUrl: './user-management-update.component.html',
 })
 export class UserManagementUpdateComponent implements OnInit {
+<%_ if (enableTranslation) { _%>
   languages = LANGUAGES;
+<%_ } _%>
   authorities: string[] = [];
   isSaving = false;
 
