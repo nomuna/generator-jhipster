@@ -397,7 +397,9 @@ _%>
       (<%= entityInstance %>?.<%= propertyName %> ?? [{}]).map(<%= propertyName %> =>
         new FormGroup({
           <%= relationship.otherEntity.primaryKey.name %>: new FormControl(<%= propertyName %>.<%= relationship.otherEntity.primaryKey.name %>, [Validators.required]),
+    <%_ if (relationship.otherEntityField !== relationship.otherEntity.primaryKey.name) { _%>
           <%= relationship.otherEntityField %>: new FormControl(<%= propertyName %>.<%= relationship.otherEntityField %>),
+    <%_ } _%>
         }<% if (relationshipRequired) { %>, [Validators.required]<% } %>)
       )
     ),
