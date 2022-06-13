@@ -135,6 +135,8 @@
     "webpack-notifier": "<%= dependabotPackageJson.devDependencies['webpack-notifier'] %>"
   },
   "overrides": {
+    "@angular/common": "<%= dependabotPackageJson.dependencies['@angular/common'] %>",
+    "@angular/core": "<%= dependabotPackageJson.dependencies['@angular/common'] %>,
     "webpack": "<%= dependabotPackageJson.devDependencies['webpack'] %>"
   },
   "engines": {
