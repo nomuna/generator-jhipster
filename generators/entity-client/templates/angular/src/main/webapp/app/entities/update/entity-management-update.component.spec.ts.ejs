@@ -156,20 +156,20 @@ describe('<%= entityAngularName %> Management Update Component', () => {
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions) { _%>
   <%_ for (const relationship of relationshipsByEntityNeedingOptions) { _%>
     <%_ const otherEntity = relationship.otherEntity _%>
-            const <%= relationship.reference.name %>: I<%= otherEntity.entityAngularName %> = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey) %>;
-            <%= entityInstance %>.<%= relationship.reference.name %> = <%= relationship.collection ? `[${relationship.reference.name}]` : relationship.reference.name %>;
+            const <%= relationship.relationshipName %>: I<%= otherEntity.entityAngularName %> = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey) %>;
+            <%= entityInstance %>.<%= relationship.reference.name %> = <%= relationship.collection ? `[${relationship.relationshipName}]` : relationship.relationshipName %>;
   <%_ } _%>
 <%_ } _%>
 
             activatedRoute.data = of({ <%= entityInstance %> });
             comp.ngOnInit();
 
-            expect(comp.editForm.value).toEqual(expect.objectContaining(<%= entityInstance %>));
+            expect(comp.editForm.getRawValue()).toMatchObject(<%= entityInstance %>);
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions) { _%>
   <%_ const relationshipsWithCustomUniqueOptions = relationshipsByEntityNeedingOptions.filter(rel => rel.relationshipOneToOne && rel.otherRelationship); _%>
   <%_ for (const relationship of relationshipsByEntityNeedingOptions) { _%>
     <%_ const otherEntity = relationship.otherEntity _%>
-            expect(comp.<% if (!relationshipsWithCustomUniqueOptions.includes(relationship)) { %><%= otherEntity.entityInstancePlural %>Shared<% } else { %><%= relationship.relationshipFieldNamePlural %><% } %>Collection).toContain(<%= relationship.reference.name %>);
+            expect(comp.<% if (!relationshipsWithCustomUniqueOptions.includes(relationship)) { %><%= otherEntity.entityInstancePlural %>Shared<% } else { %><%= relationship.relationshipFieldNamePlural %><% } %>Collection).toContain(<%= relationship.relationshipName %>);
   <%_ } _%>
 <%_ } _%>
         });
