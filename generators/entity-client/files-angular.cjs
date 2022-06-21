@@ -34,6 +34,10 @@ const angularFiles = {
           file: 'entities/entity.model.ts',
           renameTo: generator => `entities/${generator.entityFolderName}/${generator.entityFileName}.model.ts`,
         },
+        {
+          file: 'entities/service/entity-form.service.ts',
+          renameTo: generator => `entities/${generator.entityFolderName}/service/${generator.entityFileName}-form.service.ts`,
+        },
       ],
     },
     {

@@ -33,6 +33,7 @@ import { ActivatedRoute } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, Subject, from } from 'rxjs';
 
+import { <%= entityAngularName %>FormService } from '../service/<%= entityFileName %>-form.service';
 import { <%= entityAngularName %>Service } from '../service/<%= entityFileName %>.service';
 import { I<%= entityAngularName %>, <%= entityAngularName %> } from '../<%= entityFileName %>.model';
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions.filter(relationships => relationships[0].otherEntity.entityAngularName !== entityAngularName)) { _%>
@@ -53,6 +54,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
     let comp: <%= entityAngularName %>UpdateComponent;
     let fixture: ComponentFixture<<%= entityAngularName %>UpdateComponent>;
     let activatedRoute: ActivatedRoute;
+    let <%= entityInstance %>FormService: <%= entityAngularName %>FormService;
     let <%= entityInstance %>Service: <%= entityAngularName %>Service;
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions.filter(relationships => relationships[0].otherEntity.entityAngularName !== entityAngularName)) { _%>
   <%_ const otherEntity = relationshipsByEntityNeedingOptions[0].otherEntity; _%>
@@ -78,6 +80,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
 
         fixture = TestBed.createComponent(<%= entityAngularName %>UpdateComponent);
         activatedRoute = TestBed.inject(ActivatedRoute);
+        <%= entityInstance %>FormService = TestBed.inject(<%= entityAngularName %>FormService);
         <%= entityInstance %>Service = TestBed.inject(<%= entityAngularName %>Service);
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions.filter(relationships => relationships[0].otherEntity.entityAngularName !== entityAngularName)) { _%>
   <%_ const otherEntity = relationshipsByEntityNeedingOptions[0].otherEntity; _%>
@@ -164,7 +167,6 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             activatedRoute.data = of({ <%= entityInstance %> });
             comp.ngOnInit();
 
-            expect(comp.editForm.getRawValue()).toMatchObject(<%= entityInstance %>);
 <%_ for (const relationshipsByEntityNeedingOptions of allRelationshipsByEntityNeedingOptions) { _%>
   <%_ const relationshipsWithCustomUniqueOptions = relationshipsByEntityNeedingOptions.filter(rel => rel.relationshipOneToOne && rel.otherRelationship); _%>
   <%_ for (const relationship of relationshipsByEntityNeedingOptions) { _%>
@@ -172,6 +174,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             expect(comp.<% if (!relationshipsWithCustomUniqueOptions.includes(relationship)) { %><%= otherEntity.entityInstancePlural %>Shared<% } else { %><%= relationship.relationshipFieldNamePlural %><% } %>Collection).toContain(<%= relationship.relationshipName %>);
   <%_ } _%>
 <%_ } _%>
+            expect(comp.<%= entityInstance %>).toEqual(<%= entityInstance %>);
         });
     });
 
@@ -180,6 +183,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             // GIVEN
             const saveSubject = new Subject<HttpResponse<<%= entityAngularName %>>>();
             const <%= entityInstance %> = <%- testEntityPrimaryKey0 %>;
+            jest.spyOn(<%= entityInstance %>FormService, 'convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>').mockReturnValue(<%= entityInstance %>);
             jest.spyOn(<%= entityInstance %>Service, 'update').mockReturnValue(saveSubject);
             jest.spyOn(comp, 'previousState');
             activatedRoute.data = of({ <%= entityInstance %> });
@@ -192,6 +196,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             saveSubject.complete();
 
             // THEN
+            expect(<%= entityInstance %>FormService.convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>).toHaveBeenCalled();
             expect(comp.previousState).toHaveBeenCalled();
             expect(<%= entityInstance %>Service.update).toHaveBeenCalledWith(expect.objectContaining(<%= entityInstance %>));
             expect(comp.isSaving).toEqual(false);
@@ -201,6 +206,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             // GIVEN
             const saveSubject = new Subject<HttpResponse<<%= entityAngularName %>>>();
             const <%= entityInstance %> = {} as <%= entityAngularName %>;
+            jest.spyOn(<%= entityInstance %>FormService, 'convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>').mockReturnValue(<%= entityInstance %>);
             jest.spyOn(<%= entityInstance %>Service, 'create').mockReturnValue(saveSubject);
             jest.spyOn(comp, 'previousState');
             activatedRoute.data = of({ <%= entityInstance %> });
@@ -213,6 +219,7 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             saveSubject.complete();
 
             // THEN
+            expect(<%= entityInstance %>FormService.convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>).toHaveBeenCalled();
             expect(<%= entityInstance %>Service.create).toHaveBeenCalled();
             expect(comp.isSaving).toEqual(false);
             expect(comp.previousState).toHaveBeenCalled();
@@ -238,60 +245,4 @@ describe('<%= entityAngularName %> Management Update Component', () => {
             expect(comp.previousState).not.toHaveBeenCalled();
         });
     });
-<%_ const trackedEntities = Object.values(differentRelationships).filter(arr => arr.some(rel => rel.reference.owned && rel.otherEntity.primaryKey)).map(arr => arr[0].reference);
-if (trackedEntities.length > 0) {
-_%>
-
-    describe('Tracking relationships identifiers', () => {
-  <%_ for (reference of trackedEntities) {
-        const otherEntity = reference.relationship.otherEntity;
-  _%>
-        describe('track<%= otherEntity.entityAngularName %>By<%= otherEntity.primaryKey.nameCapitalized %>', () => {
-            it('Should return tracked <%= otherEntity.entityAngularName %> primary key', () => {
-                const entity = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 0) %>;
-                const trackResult = comp.track<%= otherEntity.entityAngularName %>By<%= otherEntity.primaryKey.nameCapitalized %>(0, entity);
-                expect(trackResult).toEqual(entity.<%= otherEntity.primaryKey.name %>);
-            });
-        });
-
-  <%_ } _%>
-    });
-<%_ } _%>
-<%_ const selectableEntities = Object.values(differentRelationships).filter(arr => arr.some(rel => rel.relationshipManyToMany && rel.reference.owned && rel.otherEntity.primaryKey)).map(arr => arr[0].reference);
-if (selectableEntities.length > 0) {
-_%>
-
-    describe('Getting selected relationships', () => {
-  <%_ for (reference of selectableEntities) {
-        const otherEntity = reference.relationship.otherEntity;
-  _%>
-        describe('getSelected<%= otherEntity.entityAngularName %>', () => {
-            it('Should return option if no <%= otherEntity.entityAngularName %> is selected', () => {
-                const option = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 0) %>;
-                const result = comp.getSelected<%= otherEntity.entityAngularName %>(option);
-                expect(result === option).toEqual(true);
-            });
-
-            it('Should return selected <%= otherEntity.entityAngularName %> for according option', () => {
-                const option = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 0) %>;
-                const selected = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 0) %>;
-                const selected2 = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 1) %>;
-                const result = comp.getSelected<%= otherEntity.entityAngularName %>(option, [selected2, selected]);
-                expect(result === selected).toEqual(true);
-                expect(result === selected2).toEqual(false);
-                expect(result === option).toEqual(false);
-            });
-
-            it('Should return option if this <%= otherEntity.entityAngularName %> is not selected', () => {
-                const option = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 0) %>;
-                const selected = <%- generateTestEntityPrimaryKey(otherEntity.primaryKey, 1) %>;
-                const result = comp.getSelected<%= otherEntity.entityAngularName %>(option, [selected]);
-                expect(result === option).toEqual(true);
-                expect(result === selected).toEqual(false);
-            });
-        });
-
-  <%_ } _%>
-    });
-<%_ } _%>
 });

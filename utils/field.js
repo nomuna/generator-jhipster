@@ -300,6 +300,8 @@ function prepareFieldForTemplates(entityWithConfig, field, generator) {
   }
 
   field.fieldIsEnum = !field.id && fieldIsEnum(fieldType);
+  field.enumFileName = field.fieldIsEnum ? _.kebabCase(field.fieldType) : undefined;
+
   field.fieldWithContentType = (fieldType === BYTES || fieldType === BYTE_BUFFER) && field.fieldTypeBlobContent !== TEXT;
   if (field.fieldWithContentType) {
     field.contentTypeFieldName = `${field.fieldName}ContentType`;

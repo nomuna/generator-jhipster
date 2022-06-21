@@ -1,0 +1,212 @@
+<%#
+ Copyright 2013-2022 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%_
+  const hasValidationRule = fields.some(field =>
+    field.fieldValidate && (
+      field.fieldValidationRequired ||
+      field.fieldValidationMinLength ||
+      field.fieldValidationMaxLength ||
+      field.fieldValidationMin ||
+      field.fieldValidationMax ||
+      field.fieldValidationPattern
+    )
+  );
+  const hasRequiredRelationship = relationships.some(relationship => relationship.ownerSide);
+  const isValidatorsRequired = hasValidationRule || hasRequiredRelationship;
+_%>
+import { Injectable } from '@angular/core';
+import { FormGroup, FormControl, <%_ if (isValidatorsRequired) { _%> Validators<%_ } _%> } from '@angular/forms';
+
+<%_ if (fields.some(field => field.fieldTypeTemporal)) { _%>
+import dayjs from 'dayjs/esm';
+import { DATE_TIME_FORMAT } from 'app/config/input.constants';
+<%_ } _%>
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+<%_ for (field of _.uniqBy(fields.filter(field => field.fieldIsEnum), 'enumFileName')) {
+      const { fieldType, enumFileName } = field;
+_%>
+import { <%= fieldType %> } from 'app/entities/enumerations/<%= enumFileName %>.model';
+<%_ } _%>
+
+export type <%= entityAngularName %>FormRawValue = {
+<%_ for (field of fields) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
+_%>
+  <%= fieldName %>: <%= fieldIsEnum ? fieldType : tsType %><% if (!fieldValidationRequired && !field.id) { %> | null<% } %> | undefined;
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType: string | null | undefined,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+      const { relationshipRequired, propertyName, collection, otherEntity } = relationship;
+_%>
+  <%_ if (collection) { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': <%= otherEntity.primaryKey.tsType %>[];
+  <%_ } else { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': <%= otherEntity.primaryKey.tsType %> | null | undefined;
+  <%_ } _%>
+<%_ } _%>
+};
+
+export type <%= entityAngularName %>FormGroup = FormGroup<{
+<%_ for (field of fields) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
+_%>
+  <%= fieldName %>: FormControl<<%= fieldIsEnum ? fieldType : tsType %><% if (!fieldValidationRequired && !field.id) { %> | null<% } %> | undefined>;
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType: FormControl<string | null | undefined>,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+      const { relationshipRequired, propertyName, collection, otherEntity } = relationship;
+_%>
+  <%_ if (collection) { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= otherEntity.primaryKey.tsType %>[]>;
+  <%_ } else { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= otherEntity.primaryKey.tsType %> | null | undefined>;
+  <%_ } _%>
+<%_ } _%>
+}>;
+
+@Injectable({ providedIn: 'root' })
+export class <%= entityAngularName %>FormService {
+  convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>(raw<%= entityAngularName %>: <%= entityAngularName %>FormRawValue): I<%= entityAngularName %> {
+    return {
+<%_ for (field of fields) {
+      const { fieldName, fieldTypeTemporal } = field;
+_%>
+  <%_ if (fieldTypeTemporal) { _%>
+      <%= fieldName %>: raw<%= entityAngularName %>.<%= fieldName %> ? dayjs(raw<%= entityAngularName %>.<%= fieldName %>, DATE_TIME_FORMAT) : undefined,
+  <%_ } else { _%>
+      <%= fieldName %>: raw<%= entityAngularName %>.<%= fieldName %>,
+  <%_ } _%>
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+      <%= fieldName %>ContentType: raw<%= entityAngularName %>.<%= fieldName %>ContentType,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+      const { relationshipRequired, propertyName, collection, otherEntity } = relationship;
+_%>
+  <%_ if (collection) { _%>
+  <%= propertyName %>: raw<%= entityAngularName %>['<%= propertyName %>.<%= otherEntity.primaryKey.name %>'].map(<%= otherEntity.primaryKey.name %> => ({ <%= otherEntity.primaryKey.name %> })),
+    <%_ } else { _%>
+  <%= propertyName %>: raw<%= entityAngularName %>['<%= propertyName %>.<%= otherEntity.primaryKey.name %>'] ? { <%= otherEntity.primaryKey.name %>: raw<%= entityAngularName %>['<%= propertyName %>.<%= otherEntity.primaryKey.name %>'] } : undefined,
+  <%_ } _%>
+<%_ } _%>
+    };
+  }
+
+  convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(<%= entityInstance %>: I<%= entityAngularName %>): <%= entityAngularName %>FormRawValue {
+    return {
+<%_ for (field of fields) {
+      const { fieldName, fieldTypeTemporal } = field;
+_%>
+  <%_ if (fieldTypeTemporal) { _%>
+      <%= fieldName %>: <%= entityInstance %>.<%= fieldName %> ? <%= entityInstance %>.<%= fieldName %>.format(DATE_TIME_FORMAT) : undefined,
+  <%_ } else { _%>
+      <%= fieldName %>: <%= entityInstance %>.<%= fieldName %>,
+  <%_ } _%>
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+      <%= fieldName %>ContentType: <%= entityInstance %>.<%= fieldName %>ContentType,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+      const { relationshipRequired, propertyName, collection, otherEntity, relationshipName } = relationship;
+_%>
+  <%_ if (collection) { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': (<%= entityInstance %>.<%= propertyName %> ?? []).map(<%= relationshipName %> => <%= relationshipName %>.<%= otherEntity.primaryKey.name %>!),
+    <%_ } else { _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': <%= entityInstance %>.<%= propertyName %>?.<%= otherEntity.primaryKey.name %>,
+  <%_ } _%>
+<%_ } _%>
+    };
+  }
+
+  create<%= entityAngularName %>FormGroup(<%= entityInstance %> = {} as I<%= entityAngularName %>): <%= entityAngularName %>FormGroup {
+    return new FormGroup({
+<%_ for (field of fields) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidateRules, fieldTypeTemporal } = field;
+_%>
+      <%= fieldName %>: new FormControl(
+  <%_ if (fieldTypeTemporal) { _%>
+        <%= entityInstance %>.<%= fieldName %> ? <%= entityInstance %>.<%= fieldName %>.format(DATE_TIME_FORMAT) : undefined
+  <%_ } else { _%>
+        <%= entityInstance %>.<%= fieldName _%>
+  <%_ } _%>
+  <%_
+    const useValidator = fieldValidateRules && ['required', 'minlength', 'maxlength', 'min', 'max', 'pattern'].some(rule => fieldValidateRules.includes(rule));
+    const fieldRequired = fieldValidateRules && fieldValidateRules.includes('required');
+  _%>
+  <%_ if (useValidator || field.id) { _%>
+        , {
+    <%_ if (field.id || fieldRequired) { _%>
+          nonNullable: true,
+    <%_ } %>
+    <%_ if (useValidator) { _%>
+          validators: [
+      <%_ if (field.fieldValidateRules.includes('required')) { _%>
+            Validators.required,
+      <%_ } _%>
+      <%_ if (field.fieldValidateRules.includes('minlength')) { _%>
+            Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
+      <%_ } _%>
+      <%_ if (field.fieldValidateRules.includes('maxlength')) { _%>
+            Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
+      <%_ } _%>
+      <%_ if (field.fieldValidateRules.includes('min')) { _%>
+            Validators.min(<%= field.fieldValidateRulesMin %>),
+      <%_ } _%>
+      <%_ if (field.fieldValidateRules.includes('max')) { _%>
+            Validators.max(<%= field.fieldValidateRulesMax %>),
+      <%_ } _%>
+      <%_ if (field.fieldValidateRules.includes('pattern')) { _%>
+            Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
+      <%_ } _%>
+          ],
+    <%_ } _%>
+        }
+  <%_ } _%>
+      ),
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>.<%= fieldName %>ContentType),
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
+  const { relationshipRequired, propertyName, relationshipName, collection, otherEntity } = relationship;
+_%>
+  <%_ if (collection) { _%>
+      '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': new FormControl(
+        (<%= entityInstance %>.<%= propertyName %> ?? []).map(<%= relationshipName %> => <%= relationshipName %>.<%= otherEntity.primaryKey.name %>!),
+        {
+          nonNullable: true,
+    <%_ if (relationshipRequired) { _%>
+          validators: [Validators.required],
+    <%_ } _%>
+        }
+      ),
+  <%_ } else { _%>
+      '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': new FormControl(<%= entityInstance %>.<%= propertyName %>?.<%= otherEntity.primaryKey.name %><% if (relationshipRequired) { %>, {
+        nonNullable: true,
+        validators: [Validators.required],
+      }<% } %>),
+  <%_ } _%>
+<%_ } _%>
+    });
+  }
+}
