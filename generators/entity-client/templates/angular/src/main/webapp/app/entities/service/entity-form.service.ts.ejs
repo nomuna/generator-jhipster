@@ -64,11 +64,11 @@ _%>
 <%_ } _%>
 };
 
-export type <%= entityAngularName %>FormGroup = FormGroup<{
+export type <%= entityAngularName %>FormGroupContent = {
 <%_ for (field of fields) {
       const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
 _%>
-  <%= fieldName %>: FormControl<<%= entityAngularName %>FormRawValue['<%= fieldName %>']>;
+  <%= fieldName %><% if (field.id) { %>?<% } %>: FormControl<<%= entityAngularName %>FormRawValue['<%= fieldName %>']>;
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
   <%= fieldName %>ContentType: FormControl<<%= entityAngularName %>FormRawValue['<%= fieldName %>ContentType']>;
   <%_ } _%>
@@ -78,7 +78,9 @@ _%>
 _%>
   '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= entityAngularName %>FormRawValue['<%= propertyName %>.<%= otherEntity.primaryKey.name %>']>;
 <%_ } _%>
-}>;
+};
+
+export type <%= entityAngularName %>FormGroup = FormGroup<<%= entityAngularName %>FormGroupContent>;
 
 @Injectable({ providedIn: 'root' })
 export class <%= entityAngularName %>FormService {
@@ -135,7 +137,7 @@ _%>
   }
 
   create<%= entityAngularName %>FormGroup(<%= entityInstance %> = {} as I<%= entityAngularName %>): <%= entityAngularName %>FormGroup {
-    return new FormGroup({
+    return new FormGroup<<%= entityAngularName %>FormGroupContent>({
 <%_ for (field of fields) {
       const {
         fieldName,
@@ -214,5 +216,28 @@ _%>
   <%_ } _%>
 <%_ } _%>
     });
+  }
+
+  updateForm(form: <%= entityAngularName %>FormGroup, <%= entityInstance %>: I<%= entityAngularName %>): void {
+<%_ if (fieldsContainInstant || fieldsContainZonedDateTime) { _%>
+    if (<%= entityInstance %>.<%= primaryKey.name %> === undefined) {
+      const today = dayjs().startOf('day');
+  <%_ for (const field of fields) {
+        const { fieldName, fieldTypeTimed } = field;
+  _%>
+    <%_ if (fieldTypeTimed) { _%>
+      <%= entityInstance %>.<%= fieldName %> = today;
+    <%_ } _%>
+  <%_ } _%>
+    }
+<%_ } _%>
+
+    if (<%= entityInstance %>.<%= primaryKey.name %> === undefined) {
+      form.removeControl('<%= primaryKey.name %>');
+    } else {
+      form.addControl('<%= primaryKey.name %>', new FormControl(<%= entityInstance %>.<%= primaryKey.name %>, { nonNullable: true }));
+    }
+
+    form.reset(this.convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(<%= entityInstance %>));
   }
 }
