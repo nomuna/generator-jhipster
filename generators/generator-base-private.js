@@ -875,6 +875,9 @@ module.exports = class JHipsterBasePrivateGenerator extends Generator {
     if ([TYPE_INTEGER, TYPE_LONG, TYPE_FLOAT, TYPE_DOUBLE, TYPE_BIG_DECIMAL].includes(primaryKey)) {
       return 'number';
     }
+    if ([TYPE_BOOLEAN].includes(primaryKey)) {
+      return 'boolean';
+    }
     return 'string';
   }
 
