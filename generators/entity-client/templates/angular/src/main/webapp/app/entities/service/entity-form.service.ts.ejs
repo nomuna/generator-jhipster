@@ -48,9 +48,9 @@ export type <%= entityAngularName %>FormRawValue = {
 <%_ for (field of fields) {
       const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
 _%>
-  <%= fieldName %>: <%= fieldIsEnum ? fieldType : tsType %><% if (!fieldValidationRequired && !field.id) { %> | null<% } %> | undefined;
+  <%= fieldName %>?: <%= fieldIsEnum ? fieldType : tsType %><% if (!fieldValidationRequired && !field.id) { %> | null<% } %>;
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
-  <%= fieldName %>ContentType: string | null | undefined,
+  <%= fieldName %>ContentType?: string<% if (!fieldValidationRequired) { %> | null<% } %>,
   <%_ } _%>
 <%_ } _%>
 <%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
@@ -59,7 +59,7 @@ _%>
   <%_ if (collection) { _%>
   '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': <%= otherEntity.primaryKey.tsType %>[];
   <%_ } else { _%>
-  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': <%= otherEntity.primaryKey.tsType %> | null | undefined;
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>'?: <%= otherEntity.primaryKey.tsType %><% if (!relationshipRequired) { %> | null<% } %>;
   <%_ } _%>
 <%_ } _%>
 };
@@ -68,19 +68,15 @@ export type <%= entityAngularName %>FormGroup = FormGroup<{
 <%_ for (field of fields) {
       const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
 _%>
-  <%= fieldName %>: FormControl<<%= fieldIsEnum ? fieldType : tsType %><% if (!fieldValidationRequired && !field.id) { %> | null<% } %> | undefined>;
+  <%= fieldName %>: FormControl<<%= entityAngularName %>FormRawValue['<%= fieldName %>']>;
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
-  <%= fieldName %>ContentType: FormControl<string | null | undefined>,
+  <%= fieldName %>ContentType: FormControl<<%= entityAngularName %>FormRawValue['<%= fieldName %>ContentType']>;
   <%_ } _%>
 <%_ } _%>
 <%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
-      const { relationshipRequired, propertyName, collection, otherEntity } = relationship;
+      const { propertyName, otherEntity } = relationship;
 _%>
-  <%_ if (collection) { _%>
-  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= otherEntity.primaryKey.tsType %>[]>;
-  <%_ } else { _%>
-  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= otherEntity.primaryKey.tsType %> | null | undefined>;
-  <%_ } _%>
+  '<%= propertyName %>.<%= otherEntity.primaryKey.name %>': FormControl<<%= entityAngularName %>FormRawValue['<%= propertyName %>.<%= otherEntity.primaryKey.name %>']>;
 <%_ } _%>
 }>;
 
@@ -141,7 +137,20 @@ _%>
   create<%= entityAngularName %>FormGroup(<%= entityInstance %> = {} as I<%= entityAngularName %>): <%= entityAngularName %>FormGroup {
     return new FormGroup({
 <%_ for (field of fields) {
-      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidateRules, fieldTypeTemporal } = field;
+      const {
+        fieldName,
+        fieldType,
+        fieldTypeBlobContent,
+        fieldValidateRules,
+        fieldTypeTemporal,
+        fieldValidationRequired,
+        fieldValidationMinLength,
+        fieldValidationMaxLength,
+        fieldValidationMin,
+        fieldValidationMax,
+        fieldValidationPattern,
+      } = field;
+      const usesValidators = fieldValidationRequired || fieldValidationMinLength || fieldValidationMaxLength || fieldValidationMin || fieldValidationMax || fieldValidationPattern;
 _%>
       <%= fieldName %>: new FormControl(
   <%_ if (fieldTypeTemporal) { _%>
@@ -149,33 +158,29 @@ _%>
   <%_ } else { _%>
         <%= entityInstance %>.<%= fieldName _%>
   <%_ } _%>
-  <%_
-    const useValidator = fieldValidateRules && ['required', 'minlength', 'maxlength', 'min', 'max', 'pattern'].some(rule => fieldValidateRules.includes(rule));
-    const fieldRequired = fieldValidateRules && fieldValidateRules.includes('required');
-  _%>
-  <%_ if (useValidator || field.id) { _%>
+  <%_ if (usesValidators || field.id) { _%>
         , {
-    <%_ if (field.id || fieldRequired) { _%>
+    <%_ if (field.id || fieldValidationRequired) { _%>
           nonNullable: true,
-    <%_ } %>
-    <%_ if (useValidator) { _%>
+    <%_ } _%>
+    <%_ if (usesValidators) { _%>
           validators: [
-      <%_ if (field.fieldValidateRules.includes('required')) { _%>
+      <%_ if (fieldValidationRequired) { _%>
             Validators.required,
       <%_ } _%>
-      <%_ if (field.fieldValidateRules.includes('minlength')) { _%>
+      <%_ if (fieldValidationMinLength) { _%>
             Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
       <%_ } _%>
-      <%_ if (field.fieldValidateRules.includes('maxlength')) { _%>
+      <%_ if (fieldValidationMaxLength) { _%>
             Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
       <%_ } _%>
-      <%_ if (field.fieldValidateRules.includes('min')) { _%>
+      <%_ if (fieldValidationMin) { _%>
             Validators.min(<%= field.fieldValidateRulesMin %>),
       <%_ } _%>
-      <%_ if (field.fieldValidateRules.includes('max')) { _%>
+      <%_ if (fieldValidationMax) { _%>
             Validators.max(<%= field.fieldValidateRulesMax %>),
       <%_ } _%>
-      <%_ if (field.fieldValidateRules.includes('pattern')) { _%>
+      <%_ if (fieldValidationPattern) { _%>
             Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
       <%_ } _%>
           ],
@@ -184,7 +189,8 @@ _%>
   <%_ } _%>
       ),
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
-      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>.<%= fieldName %>ContentType),
+      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>.<%= fieldName %>ContentType<% if (fieldValidationRequired) { %>, { nonNullable: true }<% } %>
+),
   <%_ } _%>
 <%_ } _%>
 <%_ for (const relationship of relationships.filter(({ ownerSide }) => ownerSide)) {
