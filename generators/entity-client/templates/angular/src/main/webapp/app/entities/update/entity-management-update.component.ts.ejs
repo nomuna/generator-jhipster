@@ -205,6 +205,10 @@ _%>
 
     protected updateForm(<%= entityInstance %>: I<%= entityAngularName %>): void {
         this.<%= entityInstance %> = <%= entityInstance %>;
+        if (<%= entityInstance %>.<%= primaryKey.name %> === undefined) {
+          this.editForm.get('<%= primaryKey.name %>')!.disable();
+        }
+
         this.editForm.reset(this.<%= entityInstance %>FormService.convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(<%= entityInstance %>));
 <%_ if (relationships.filter(rel => rel.ownerSide).length > 0) { _%>
 
