@@ -34,10 +34,6 @@ const angularFiles = {
           file: 'entities/entity.model.ts',
           renameTo: generator => `entities/${generator.entityFolderName}/${generator.entityFileName}.model.ts`,
         },
-        {
-          file: 'entities/service/entity-form.service.ts',
-          renameTo: generator => `entities/${generator.entityFolderName}/service/${generator.entityFileName}-form.service.ts`,
-        },
       ],
     },
     {
@@ -82,6 +78,10 @@ const angularFiles = {
       condition: generator => !generator.readOnly && !generator.embedded,
       path: ANGULAR_DIR,
       templates: [
+        {
+          file: 'entities/service/entity-form.service.ts',
+          renameTo: generator => `entities/${generator.entityFolderName}/service/${generator.entityFileName}-form.service.ts`,
+        },
         {
           file: 'entities/update/entity-management-update.component.html',
           renameTo: generator => `entities/${generator.entityFolderName}/update/${generator.entityFileName}-update.component.html`,
